@@ -5,7 +5,7 @@ import getopt
 import pandas as pd
 
 input_file = ''
-output_file = 'screened_mass_data.xlsx'
+output_file = 'screened_mass_data.csv'
 dbe = 12
 mass = 400.0
 
@@ -18,7 +18,8 @@ def read_xlsx(file):
 
 def main(argv):
     """
-    input file is a XLSX file that producted by Software 'Agilent MassHunter Qualitative Analysis'
+    input file is a XLSX file that exported by Software 'Agilent MassHunter Qualitative Analysis'
+    output file is in csv format.
     """
     global input_file
     global output_file
@@ -48,7 +49,10 @@ def main(argv):
         if int(row[1]['DBE']) >= dbe and float(row[1]['Mass']) >= mass:
             # print(row[1])
             result = result.append(row[1])
-    result.to_excel(output_file)
+    # chose most-useful columns
+    result = result[['Formula', 'RT', 'Mass']]
+    result.to_csv(output_file, index=False)
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])
