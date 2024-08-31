@@ -38,16 +38,16 @@ may_same_collector_pos = []
 # 3. Then we match cadidates from FPS_POS with mz_pos value
 for candidate_idx, mz_pos in candidate_mz_pos.iteritems():
     # calc mz_pos resonable value range
-    threshold = 0.05   # may passed by argument
-    lower_limit = mz_pos - threshold
-    upper_bound = mz_pos + threshold
-    # print("lower_limit:%f, upper_bound: %f" % (lower_limit, upper_bound))
+    tolerance = 0.05   # may passed by argument
+    lower_bound = mz_pos - tolerance
+    upper_bound = mz_pos + tolerance
+    # print("lower_bound:%f, upper_bound: %f" % (lower_bound, upper_bound))
     may_same = []
     # get FPS_POS mz_pos data
     fps_pos_values = fps_pos[["Precursor m/z", "RT (min)", "Height"]]
     for idx, pos_row in fps_pos_values.iterrows():
         mz_value = pos_row["Precursor m/z"]
-        if mz_value >= lower_limit and mz_value <= upper_bound:
+        if mz_value >= lower_bound and mz_value <= upper_bound:
             may_same.append(pos_row)
         # may_same_collector.append(may_same)
     def sort_by_rt(row):
@@ -64,16 +64,16 @@ candidate_mz_neg = candidate_mz_pos - 2 * 1.007825
 ## 4.2 select candidate
 for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
     # calc mz_neg resonable value range
-    threshold = 0.05   # may passed by argument
-    lower_limit = mz_neg - threshold
-    upper_bound = mz_neg + threshold
-    # print("lower_limit:%f, upper_bound: %f" % (lower_limit, upper_bound))
+    tolerance = 0.05   # may passed by argument
+    lower_bound = mz_neg - tolerance
+    upper_bound = mz_neg + tolerance
+    # print("lower_bound:%f, upper_bound: %f" % (lower_bound, upper_bound))
     may_same = []
     # get FPS_NEG mz_neg data
     fps_neg_values = fps_neg[["Precursor m/z", "RT (min)", "Height"]]
     for idx, neg_row in fps_neg_values.iterrows():
         mz_value = neg_row["Precursor m/z"]
-        if mz_value >= lower_limit and mz_value <= upper_bound:
+        if mz_value >= lower_bound and mz_value <= upper_bound:
             may_same.append(neg_row)
         # may_same_collector.append(may_same)
     def sort_by_rt(row):
@@ -85,7 +85,7 @@ for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
 # 5. compare candidate_pos and candidate_neg by RT,
 #    select what we expected
 matched_pos_and_neg = []
-rt_threshold = 0.5
+rt_tolerance = 0.5
 for i in range(0, len(may_same_collector_pos)):
     pos_candidates = may_same_collector_pos[i]
     pos_index = 0
@@ -97,7 +97,7 @@ for i in range(0, len(may_same_collector_pos)):
     while (pos_index < pos_end) and (neg_index < neg_end):
         # calc rt-diff
         rt_diff = abs(pos_candidates[pos_index]["RT (min)"] - neg_candidates[neg_index]["RT (min)"])
-        if rt_diff < rt_threshold:
+        if rt_diff < rt_tolerance:
             # pos and neg are matched
             may_match.append((pos_candidates[pos_index], neg_candidates[neg_index]))
             pos_index += 1
