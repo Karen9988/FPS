@@ -39,7 +39,7 @@ may_same_collector_pos = []
 # 3. Then we match candidates from FPS_POS with mz_pos value
 for candidate_idx, mz_pos in candidate_mz_pos.iteritems():
     # calc mz_pos resonable value range
-    tolerance = 0.05   # may passed by argument
+    tolerance = 0.02   # may passed by argument
     lower_bound = mz_pos - tolerance
     upper_bound = mz_pos + tolerance
     #print("lower_bound: %f, upper_bound: %f" % (lower_bound, upper_bound))
@@ -49,10 +49,10 @@ for candidate_idx, mz_pos in candidate_mz_pos.iteritems():
     for idx, pos_row in fps_pos_values.iterrows():
         mz_value = pos_row["Precursor m/z"]
         if mz_value >= lower_bound and mz_value <= upper_bound:
-            may_same.append(pos_row)
+            may_same.append((idx, pos_row))
         # may_same_collector.append(may_same)
     def sort_by_rt(row):
-        return row["RT (min)"]
+        return row[1]["RT (min)"]
     may_same.sort(key=sort_by_rt)
     may_same_collector_pos.append(may_same)
 # print(may_same_collector_pos)
@@ -65,7 +65,7 @@ candidate_mz_neg = candidate_mz_pos - 2 * 1.007825
 ## 4.2 select candidate
 for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
     # calc mz_neg resonable value range
-    tolerance = 0.05   # may passed by argument
+    tolerance = 0.02   # may passed by argument
     lower_bound = mz_neg - tolerance
     upper_bound = mz_neg + tolerance
     # print("lower_bound:%f, upper_bound: %f" % (lower_bound, upper_bound))
@@ -75,10 +75,10 @@ for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
     for idx, neg_row in fps_neg_values.iterrows():
         mz_value = neg_row["Precursor m/z"]
         if mz_value >= lower_bound and mz_value <= upper_bound:
-            may_same.append(neg_row)
+            may_same.append((idx, neg_row))
         # may_same_collector.append(may_same)
     def sort_by_rt(row):
-        return row["RT (min)"]
+        return row[1]["RT (min)"]
     may_same.sort(key=sort_by_rt)
     may_same_collector_neg.append(may_same)
 # print(may_same_collector_neg)
@@ -86,7 +86,7 @@ for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
 # 5. compare candidate_pos and candidate_neg by RT,
 #    select what we expected
 matched_pos_and_neg = []
-rt_tolerance = 0.5
+rt_tolerance = 0.05
 for i in range(0, len(may_same_collector_pos)):
     pos_candidates = may_same_collector_pos[i]
     pos_index = 0
@@ -97,14 +97,23 @@ for i in range(0, len(may_same_collector_pos)):
     may_match = []
     while (pos_index < pos_end) and (neg_index < neg_end):
         # calc rt-diff
-        rt_diff = abs(pos_candidates[pos_index]["RT (min)"] - neg_candidates[neg_index]["RT (min)"])
+        rt_diff = abs(pos_candidates[pos_index][1]["RT (min)"] - neg_candidates[neg_index][1]["RT (min)"])
         if rt_diff < rt_tolerance:
             # pos and neg are matched
-            may_match.append((pos_candidates[pos_index], neg_candidates[neg_index]))
+            already_found_pair = False
+            for matched_array in matched_pos_and_neg:
+                for matched in matched_array:
+                    if pos_candidates[pos_index][0] == matched[0][0] and neg_candidates[neg_index][0] == matched[1][0]:
+                        already_found_pair = True
+                        break
+                if already_found_pair:
+                    break
+            if not already_found_pair:
+                may_match.append((pos_candidates[pos_index], neg_candidates[neg_index]))
             pos_index += 1
             neg_index += 1
         else:
-            if pos_candidates[pos_index]["RT (min)"] < neg_candidates[neg_index]["RT (min)"]:
+            if pos_candidates[pos_index][1]["RT (min)"] < neg_candidates[neg_index][1]["RT (min)"]:
                 pos_index += 1
             else:
                 neg_index += 1
@@ -117,7 +126,7 @@ pos_area_divide_neg_area = []
 for pos_and_neg_list in matched_pos_and_neg:
     result_list = []
     for pos_and_neg in pos_and_neg_list:
-        ratio = pos_and_neg[0]["Area"] / pos_and_neg[1]["Area"]
+        ratio = pos_and_neg[0][1]["Area"] / pos_and_neg[1][1]["Area"]
         if ratio < 1:
             ratio = -1 / ratio
         result_list.append(ratio)
@@ -138,8 +147,8 @@ for value_list in pos_area_divide_neg_area:
         print("No Matched Candidates found!")
     value_idx = 0
     for value in value_list:
-        pos_item = pos_and_neg_list[value_idx][0]
-        neg_item = pos_and_neg_list[value_idx][1]
+        pos_item = pos_and_neg_list[value_idx][0][1]
+        neg_item = pos_and_neg_list[value_idx][1][1]
         value_idx += 1
         cluster = 'Unknown'
         if value > 4.5:
