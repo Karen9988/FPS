@@ -39,7 +39,7 @@ may_same_collector_pos = []
 # 3. Then we match candidates from FPS_POS with mz_pos value
 for candidate_idx, mz_pos in candidate_mz_pos.iteritems():
     # calc mz_pos resonable value range
-    tolerance = 0.02   # may passed by argument
+    tolerance = 0.01   # may passed by argument
     lower_bound = mz_pos - tolerance
     upper_bound = mz_pos + tolerance
     #print("lower_bound: %f, upper_bound: %f" % (lower_bound, upper_bound))
@@ -49,7 +49,7 @@ for candidate_idx, mz_pos in candidate_mz_pos.iteritems():
     for idx, pos_row in fps_pos_values.iterrows():
         mz_value = pos_row["Precursor m/z"]
         if mz_value >= lower_bound and mz_value <= upper_bound:
-            may_same.append((idx, pos_row))
+            may_same.append((idx, pos_row, abs(mz_pos - mz_value)))
         # may_same_collector.append(may_same)
     def sort_by_rt(row):
         return row[1]["RT (min)"]
@@ -65,7 +65,7 @@ candidate_mz_neg = candidate_mz_pos - 2 * 1.007825
 ## 4.2 select candidate
 for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
     # calc mz_neg resonable value range
-    tolerance = 0.02   # may passed by argument
+    tolerance = 0.01   # may passed by argument
     lower_bound = mz_neg - tolerance
     upper_bound = mz_neg + tolerance
     # print("lower_bound:%f, upper_bound: %f" % (lower_bound, upper_bound))
@@ -75,7 +75,7 @@ for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
     for idx, neg_row in fps_neg_values.iterrows():
         mz_value = neg_row["Precursor m/z"]
         if mz_value >= lower_bound and mz_value <= upper_bound:
-            may_same.append((idx, neg_row))
+            may_same.append((idx, neg_row, abs(mz_value - mz_neg)))
         # may_same_collector.append(may_same)
     def sort_by_rt(row):
         return row[1]["RT (min)"]
@@ -86,7 +86,7 @@ for candidate_idx, mz_neg in candidate_mz_neg.iteritems():
 # 5. compare candidate_pos and candidate_neg by RT,
 #    select what we expected
 matched_pos_and_neg = []
-rt_tolerance = 0.05
+rt_tolerance = 0.02
 for i in range(0, len(may_same_collector_pos)):
     pos_candidates = may_same_collector_pos[i]
     pos_index = 0
@@ -109,7 +109,7 @@ for i in range(0, len(may_same_collector_pos)):
                 if already_found_pair:
                     break
             if not already_found_pair:
-                may_match.append((pos_candidates[pos_index], neg_candidates[neg_index]))
+                may_match.append((pos_candidates[pos_index], neg_candidates[neg_index], rt_diff))
             pos_index += 1
             neg_index += 1
         else:
@@ -127,9 +127,10 @@ for pos_and_neg_list in matched_pos_and_neg:
     result_list = []
     for pos_and_neg in pos_and_neg_list:
         ratio = pos_and_neg[0][1]["Area"] / pos_and_neg[1][1]["Area"]
+        rt_diff = pos_and_neg[2]
         if ratio < 1:
             ratio = -1 / ratio
-        result_list.append(ratio)
+        result_list.append((ratio, rt_diff))
     pos_area_divide_neg_area.append(result_list)
 # print(pos_area_divide_neg_area)
 
@@ -137,8 +138,8 @@ for pos_and_neg_list in matched_pos_and_neg:
 ## 'Anthocyanin': > 4.5
 ## 'Flavonol glycoside': < -1
 candidate_idx = 0
-header = ['Candidate_index', 'POS_RT', 'POS_Precursor',
-          'POS_Area', 'NEG_RT', 'NEG_Precursor', 'NEG_Area', 'Ratio', 'Cluster']
+header = ['Candidate_index', 'POS_RT', 'POS_Precursor', 'POS_difference', 'POS_Area',
+          'NEG_RT', 'RT_difference', 'NEG_Precursor', 'NEG_difference', 'NEG_Area', 'Ratio', 'Cluster']
 data = []
 for value_list in pos_area_divide_neg_area:
     # print("Matched Results for Candidate#%d" % candidate_idx)
@@ -146,18 +147,19 @@ for value_list in pos_area_divide_neg_area:
     if len(value_list) == 0:
         print("No Matched Candidates found!")
     value_idx = 0
-    for value in value_list:
+    for ratio_and_rtdiff in value_list:
         pos_item = pos_and_neg_list[value_idx][0][1]
         neg_item = pos_and_neg_list[value_idx][1][1]
-        value_idx += 1
         cluster = 'Unknown'
-        if value > 4.5:
+        value = ratio_and_rtdiff[0]
+        if value > 5:
             cluster = 'A'
         elif value < -1:
             cluster = 'F'
-        data.append([candidate_idx, pos_item["RT (min)"], pos_item["Precursor m/z"],
-                     pos_item["Area"], neg_item["RT (min)"], neg_item["Precursor m/z"], neg_item["Area"],
-                     value, cluster])
+        data.append([candidate_idx, pos_item["RT (min)"], pos_item["Precursor m/z"], pos_and_neg_list[value_idx][0][2],
+                     pos_item["Area"], neg_item["RT (min)"], ratio_and_rtdiff[1], neg_item["Precursor m/z"],
+                     pos_and_neg_list[value_idx][1][2], neg_item["Area"], value, cluster])
+        value_idx += 1
     candidate_idx += 1
     # print("")
 
